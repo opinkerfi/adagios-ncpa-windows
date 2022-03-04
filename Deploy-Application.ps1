@@ -61,19 +61,20 @@ Try {
 	##* VARIABLE DECLARATION
 	##*===============================================
 	## Variables: Application
-	[string]$appVendor = ''
-	[string]$appName = ''
-	[string]$appVersion = ''
+	[string]$appVendor = 'Nagios'
+	[string]$appName = 'NCPA'
+	[string]$appVersion = '2.4.0'
 	[string]$appArch = ''
 	[string]$appLang = 'EN'
 	[string]$appRevision = '01'
 	[string]$appScriptVersion = '1.0.0'
-	[string]$appScriptDate = 'XX/XX/20XX'
-	[string]$appScriptAuthor = '<author name>'
+	[string]$appScriptDate = '04/03/2022'
+	[string]$appScriptAuthor = 'Gardar Thorsteinsson<gardar@ok.is>'
 	##*===============================================
 	## Variables: Install Titles (Only set here to override defaults set by the toolkit)
-	[string]$installName = ''
+	[string]$installName = 'Nagios NCPA agent deployment'
 	[string]$installTitle = ''
+	[version]$AdagiosAgentVersion = [version]'2.0.0.1'
 
 	##* Do not modify section below
 	#region DoNotModify
@@ -117,13 +118,25 @@ Try {
 		[string]$installPhase = 'Pre-Installation'
 
 		## Show Welcome Message, close Internet Explorer if required, allow up to 3 deferrals, verify there is enough disk space to complete the install, and persist the prompt
-		Show-InstallationWelcome -CloseApps 'iexplore' -AllowDefer -DeferTimes 3 -CheckDiskSpace -PersistPrompt
+		# Show-InstallationWelcome -CloseApps 'iexplore' -AllowDefer -DeferTimes 3 -CheckDiskSpace -PersistPrompt
+		# Show-InstallationWelcome -CloseApps 'nscp' -CheckDiskSpace -Silent
+		#Show-InstallationWelcome -CloseApps 'ncpalistener' -CheckDiskSpace -Silent
+		#Show-InstallationWelcome -CloseApps 'ncpapassive' -CheckDiskSpace -Silent
 
 		## Show Progress Message (with the default message)
 		Show-InstallationProgress
 
 		## <Perform Pre-Installation tasks here>
-
+		## Uninstall older versions of NSClient++ (version 0.3.x) by uninstalling the service
+        # Test-ServiceExists -Name 'NSClientpp' -PassThru | Where-Object {$_ } | ForEach-Object {$_.Delete() }
+		
+		## Remove all MSI versions of NSClient++
+        #Remove-MSIApplications -Name 'NSClient++ (x64)'
+        ## Remove 0.5.2033
+        #Execute-MSI -Action Uninstall -Path '{B5C2D99D-F84E-4BDB-89CE-702A4E57DE95}'
+        ## Remove 0.4.4.23
+        #Execute-MSI -Action Uninstall -Path '{5160016F-E401-432C-9423-A58E18452D52}'
+		
 
 		##*===============================================
 		##* INSTALLATION
@@ -138,13 +151,32 @@ Try {
 
 		## <Perform Installation tasks here>
 
-
+		If ($Is64Bit) {
+			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
+			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
+		}
+		Else {
+			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
+			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
+		}
+		
 		##*===============================================
 		##* POST-INSTALLATION
 		##*===============================================
 		[string]$installPhase = 'Post-Installation'
 
 		## <Perform Post-Installation tasks here>
+
+		Stop-ServiceAndDependencies -Name 'ncpalistener'
+		Stop-ServiceAndDependencies -Name 'ncpapassive'
+
+		# Copy-File -Path "$dirSupportFiles\etc\ncpa.cfg" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\etc\ncpa.cfg"
+		Copy-File -Path "$dirSupportFiles\etc\ncpa.cfg.d\*.*" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\etc\ncpa.cfg.d\"
+		Copy-File -Path "$dirSupportFiles\plugins\okconfig" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\plugins\" -Recurse
+
+		Start-ServiceAndDependencies -Name 'ncpalistener'
+		Start-ServiceAndDependencies -Name 'ncpapassive'
+  		
 
 		## Display a message at the end of the install
 		If (-not $useDefaultMsi) { Show-InstallationPrompt -Message 'You can customize text to appear at the end of an install or remove it completely for unattended installations.' -ButtonRightText 'OK' -Icon Information -NoWait }
