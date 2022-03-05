@@ -127,8 +127,11 @@ Try {
 		Show-InstallationProgress
 
 		## <Perform Pre-Installation tasks here>
-		## Uninstall older versions of NSClient++ (version 0.3.x) by uninstalling the service
-        # Test-ServiceExists -Name 'NSClientpp' -PassThru | Where-Object {$_ } | ForEach-Object {$_.Delete() }
+		
+		# Uninstall ncpa if it exists
+		#Stop-ServiceAndDependencies -Name 'ncpalistener'
+		#Stop-ServiceAndDependencies -Name 'ncpapassive'
+		#If (Test-ServiceExists -Name 'ncpalistener' -PassThru) { Execute-Process -Path 'C:\Program Files (x86)\Nagios\NCPA\uninstall.exe' -Parameters '/S' -WindowStyle 'Hidden' }
 		
 		## Remove all MSI versions of NSClient++
         #Remove-MSIApplications -Name 'NSClient++ (x64)'
@@ -136,7 +139,6 @@ Try {
         #Execute-MSI -Action Uninstall -Path '{B5C2D99D-F84E-4BDB-89CE-702A4E57DE95}'
         ## Remove 0.4.4.23
         #Execute-MSI -Action Uninstall -Path '{5160016F-E401-432C-9423-A58E18452D52}'
-		
 
 		##*===============================================
 		##* INSTALLATION
@@ -150,15 +152,15 @@ Try {
 		}
 
 		## <Perform Installation tasks here>
-
-		If ($Is64Bit) {
-			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
-			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
-		}
-		Else {
-			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
-			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
-		}
+		Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S' -WindowStyle 'Hidden'
+#		If ($Is64Bit) {
+#			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
+#			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
+#		}
+#		Else {
+#			Execute-Process -Path 'ncpa-2.4.0.exe' -Parameters '/S /TOKEN=mytoken' -WindowStyle 'Hidden'
+#			#ncpa-<version>.exe /S /TOKEN='mytoken' /<variable>='<value>' /D=<base directory>
+#		}
 		
 		##*===============================================
 		##* POST-INSTALLATION
@@ -171,15 +173,15 @@ Try {
 		Stop-ServiceAndDependencies -Name 'ncpapassive'
 
 		# Copy-File -Path "$dirSupportFiles\etc\ncpa.cfg" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\etc\ncpa.cfg"
-		Copy-File -Path "$dirSupportFiles\etc\ncpa.cfg.d\*.*" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\etc\ncpa.cfg.d\"
-		Copy-File -Path "$dirSupportFiles\plugins\okconfig" -Destination "$envCommonProgramFilesX86\Nagios\NCPA\plugins\" -Recurse
+		Copy-File -Path "$dirSupportFiles\etc\ncpa.cfg.d\*.*" -Destination "C:\Program Files (x86)\Nagios\NCPA\etc\ncpa.cfg.d\"
+		Copy-File -Path "$dirSupportFiles\plugins\okconfig" -Destination "C:\Program Files (x86)\Nagios\NCPA\plugins\" -Recurse
 
 		Start-ServiceAndDependencies -Name 'ncpalistener'
 		Start-ServiceAndDependencies -Name 'ncpapassive'
   		
 
 		## Display a message at the end of the install
-		If (-not $useDefaultMsi) { Show-InstallationPrompt -Message 'You can customize text to appear at the end of an install or remove it completely for unattended installations.' -ButtonRightText 'OK' -Icon Information -NoWait }
+#		If (-not $useDefaultMsi) { Show-InstallationPrompt -Message 'You can customize text to appear at the end of an install or remove it completely for unattended installations.' -ButtonRightText 'OK' -Icon Information -NoWait }
 	}
 	ElseIf ($deploymentType -ieq 'Uninstall')
 	{
